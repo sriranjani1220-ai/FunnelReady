@@ -18,7 +18,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: 'lax'
   }
 }));
 
@@ -123,6 +123,12 @@ app.get('/api/scan', requireAuth, async (req, res) => {
     console.error('Scan error:', err);
     res.status(500).json({ error: 'Scan failed: ' + err.message });
   }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
 // Start server
