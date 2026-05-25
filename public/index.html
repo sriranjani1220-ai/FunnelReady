@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funnel Ready</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #94a3b8; font-size: 1.1rem; }
+    .status {
+      margin: 1.5rem auto;
+      max-width: 600px;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      background: #1e293b;
+      text-align: center;
+    }
+    .status.connected { border-left: 4px solid #22c55e; }
+    .status.disconnected { border-left: 4px solid #64748b; }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+    }
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-sm {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+    }
+    .actions { text-align: center; margin: 1.5rem 0; }
+    .actions > * { margin: 0 0.5rem; }
+    .org-info { font-size: 0.9rem; color: #94a3b8; text-align: center; margin-bottom: 1rem; }
+
+    /* Results */
+    #results { display: none; max-width: 900px; margin: 2rem auto; }
+    .grade-card {
+      text-align: center;
+      background: #1e293b;
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .grade-letter {
+      font-size: 5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .grade-A { color: #22c55e; }
+    .grade-B { color: #84cc16; }
+    .grade-C { color: #eab308; }
+    .grade-D { color: #f97316; }
+    .grade-F { color: #ef4444; }
+    .grade-score { font-size: 1.2rem; color: #94a3b8; margin-top: 0.5rem; }
+    .record-counts {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .record-count {
+      background: #334155;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .record-count strong { color: #3b82f6; }
+
+    /* Object scores */
+    .object-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .object-card {
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: border 0.2s;
+      border: 2px solid transparent;
+    }
+    .object-card:hover { border-color: #3b82f6; }
+    .object-card.active { border-color: #8b5cf6; }
+    .object-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .object-card .score {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    .score-bar {
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s;
+    }
+
+    /* Drill-down */
+    #drilldown {
+      display: none;
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+    #drilldown h3 { margin-bottom: 1rem; }
+    .check-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      border-radius: 0.5rem;
+      transition: background 0.15s;
+    }
+    .check-row:hover { background: #334155; }
+    .check-row.active { background: #334155; border-left: 3px solid #3b82f6; }
+    .check-name { font-size: 0.95rem; }
+    .check-score { font-weight: 700; font-size: 1.1rem; }
+
+    /* Findings */
+    .finding-detail {
+      display: none;
+      background: #0f172a;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 0.5rem 0 1rem 0;
+      animation: fadeIn 0.2s;
+    }
+    .finding-detail.visible { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .finding-detail h4 {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .finding-list {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      max-height: 250px;
+      overflow-y: auto;
+      padding-left: 0;
+    }
+    .bullet-group {
+      margin-bottom: 0.75rem;
+    }
+    .bullet-main {
+      font-weight: 600;
+      color: #e2e8f0;
+      padding: 0.3rem 0;
+      padding-left: 1rem;
+      position: relative;
+    }
+    .bullet-main::before {
+      content: "\2022";
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+    }
+    .bullet-sub {
+      padding: 0.2rem 0;
+      padding-left: 2rem;
+      position: relative;
+      color: #94a3b8;
+    }
+    .bullet-sub::before {
+      content: "\25E6";
+      position: absolute;
+      left: 1rem;
+      color: #64748b;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #334155;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Funnel Ready</h1>
+    <p class="subtitle">Is your Salesforce org AI-ready?</p>
+  </div>
+
+  <div id="status" class="status disconnected">Checking connection...</div>
+
+  <div class="actions">
+    <div id="connect-section">
+      <a href="/oauth/login" class="btn btn-primary">Connect Your Salesforce Org</a>
+    </div>
+    <div id="connected-section" style="display:none;">
+      <div class="org-info" id="org-info"></div>
+      <button id="scan-btn" class="btn btn-primary" onclick="startScan()">Scan My Org</button>
+      <a href="/oauth/logout" class="btn btn-danger">Disconnect</a>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="grade-card">
+      <div id="grade-letter" class="grade-letter"></div>
+      <div id="grade-score" class="grade-score"></div>
+    </div>
+
+    <div id="object-scores" class="object-scores"></div>
+    <div id="drilldown"></div>
+  </div>
+
+  <script>
+    let scanData = null;
+
+    async function checkStatus() {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      const statusEl = document.getElementById('status');
+      const connectSection = document.getElementById('connect-section');
+      const connectedSection = document.getElementById('connected-section');
+
+      if (data.connected) {
+        statusEl.className = 'status connected';
+        statusEl.textContent = 'Connected to Salesforce';
+        connectSection.style.display = 'none';
+        connectedSection.style.display = 'block';
+        fetchOrgInfo();
+      } else {
+        statusEl.className = 'status disconnected';
+        statusEl.textContent = 'Not connected';
+        connectSection.style.display = 'block';
+        connectedSection.style.display = 'none';
+      }
+    }
+
+    async function fetchOrgInfo() {
+      const res = await fetch('/api/org-info');
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('org-info').textContent = `${data.displayName} (${data.username})`;
+      }
+    }
+
+    async function startScan() {
+      const btn = document.getElementById('scan-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Scanning...';
+
+      try {
+        const res = await fetch('/api/scan');
+        if (!res.ok) throw new Error('Scan failed');
+        scanData = await res.json();
+        renderResults();
+      } catch (err) {
+        alert('Scan failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scan My Org';
+      }
+    }
+
+    function renderResults() {
+      document.getElementById('results').style.display = 'block';
+
+      const { overallGrade, objectScores, recordCounts } = scanData.summary;
+
+      // Grade
+      const gradeLetter = document.getElementById('grade-letter');
+      gradeLetter.textContent = overallGrade.grade;
+      gradeLetter.className = `grade-letter grade-${overallGrade.grade}`;
+      document.getElementById('grade-score').textContent = `Data Quality Score: ${overallGrade.score}/100`;
+
+      // Record counts removed from grade card — shown on object cards instead
+
+      // Object score cards
+      const scoresEl = document.getElementById('object-scores');
+      scoresEl.innerHTML = '<div style="font-size:0.75rem;color:#64748b;grid-column:1/-1;margin-bottom:-0.5rem;">DQ SCORE BY OBJECT (click to drill down)</div>' +
+        Object.entries(objectScores).map(([obj, data]) => `
+        <div class="object-card" onclick="showDrilldown('${obj}')">
+          <h3>${obj} <span style="font-size:0.75rem;color:#64748b;font-weight:400;">(${recordCounts[obj]} records)</span></h3>
+          <div class="score" style="color:${scoreColor(data.score)}">${data.score}<span style="font-size:0.9rem;color:#94a3b8">/100</span></div>
+          <div class="score-bar">
+            <div class="score-bar-fill" style="width:${data.score}%;background:${scoreColor(data.score)}"></div>
+          </div>
+        </div>
+      `).join('');
+
+      // Default to Lead breakdown and highlight its card
+      showDrilldown('Lead');
+      document.querySelector('.object-card').classList.add('active');
+    }
+
+    function showDrilldown(objectName) {
+      const dd = document.getElementById('drilldown');
+      dd.style.display = 'block';
+
+      // Highlight active card
+      const cards = document.querySelectorAll('.object-card');
+      cards.forEach(c => c.classList.remove('active'));
+      const objects = ['Lead', 'Contact', 'Account', 'Opportunity'];
+      const idx = objects.indexOf(objectName);
+      if (cards[idx]) cards[idx].classList.add('active');
+
+      const breakdown = scanData.summary.objectScores[objectName].breakdown;
+
+      const checkNames = {
+        fieldCompleteness: 'Field Completeness',
+        duplicates: 'Duplicate Detection',
+        formatConsistency: 'Format Consistency',
+        junkData: 'Junk Data Detection',
+        dataIntegrity: 'Data Integrity'
+      };
+
+      let html = `<h3>${objectName} - Breakdown</h3>`;
+      html += '<p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem;">Click a category to see details</p>';
+
+      // Score rows as clickable buttons, each followed by a hidden detail panel
+      for (const [key, score] of Object.entries(breakdown)) {
+        html += `
+          <div class="check-row" onclick="toggleDetail('${objectName}', '${key}', this)">
+            <span class="check-name">${checkNames[key]}</span>
+            <span class="check-score" style="color:${scoreColor(score)}">${score}/100</span>
+          </div>
+          <div class="finding-detail" id="detail-${objectName}-${key}">
+            ${getDetailContent(objectName, key)}
+          </div>
+        `;
+      }
+
+      dd.innerHTML = html;
+    }
+
+    function toggleDetail(objectName, checkKey, rowEl) {
+      const panel = document.getElementById(`detail-${objectName}-${checkKey}`);
+      const isVisible = panel.classList.contains('visible');
+
+      // Toggle only the clicked one
+      if (isVisible) {
+        panel.classList.remove('visible');
+        rowEl.classList.remove('active');
+      } else {
+        panel.classList.add('visible');
+        rowEl.classList.add('active');
+      }
+    }
+
+    function getDetailContent(objectName, checkKey) {
+      const details = scanData.details;
+      let html = '';
+
+      if (checkKey === 'fieldCompleteness') {
+        const fc = details.fieldCompleteness[objectName];
+        if (fc) {
+          const missingFields = Object.entries(fc.fields).filter(([, s]) => s.missing > 0);
+          if (missingFields.length > 0) {
+            html += `<h4>Missing Fields <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();downloadCSV('fieldCompleteness','${objectName}')">Download CSV to take action</button></h4>`;
+            html += '<div class="finding-list">';
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">Missing Fields (${missingFields.length} fields affected)</div>`;
+            for (const [field, stats] of missingFields) {
+              html += `<div class="bullet-sub">${field}: ${stats.missing}/${stats.total} missing (${100 - stats.percent}%)</div>`;
+            }
+            html += '</div></div>';
+          } else {
+            html += '<p style="color:#22c55e;font-size:0.9rem;">All critical fields populated!</p>';
+          }
+        }
+      } else if (checkKey === 'duplicates') {
+        const dup = details.duplicates[objectName];
+        if (dup && dup.count > 0) {
+          const groupCount = dup.duplicateGroups.length;
+          const basis = objectName === 'Account' ? 'name' : 'email';
+          html += `<h4>Duplicate Records <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();downloadCSV('duplicates','${objectName}')">Download to take action</button></h4>`;
+          html += '<div class="finding-list">';
+          html += '<div class="bullet-group">';
+          html += `<div class="bullet-main">${groupCount} duplicate groups found based on ${basis}</div>`;
+          html += `<div class="bullet-sub">${dup.count} extra records that are duplicates</div>`;
+          html += `<div class="bullet-sub">Download CSV to identify and merge/delete</div>`;
+          html += '</div></div>';
+        } else {
+          html += '<p style="color:#22c55e;font-size:0.9rem;">No duplicates found!</p>';
+        }
+      } else if (checkKey === 'junkData') {
+        const junk = details.junkData[objectName];
+        if (junk && (junk.junk.count > 0 || junk.suspicious.count > 0)) {
+          html += `<h4>Junk/Suspicious Data <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();downloadCSV('junkData','${objectName}')">Download CSV to take action</button></h4>`;
+          html += '<div class="finding-list">';
+          if (junk.junk.count > 0) {
+            // Group by field + value
+            const grouped = {};
+            for (const r of junk.junk.records) {
+              const key = `${r.field}:${r.value}`;
+              if (!grouped[key]) grouped[key] = { field: r.field, value: r.value, count: 0 };
+              grouped[key].count++;
+            }
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">Junk Records (${junk.junk.count})</div>`;
+            for (const g of Object.values(grouped)) {
+              html += `<div class="bullet-sub">${g.field} = "${g.value}" (${g.count} records)</div>`;
+            }
+            html += '</div>';
+          }
+          if (junk.suspicious.count > 0) {
+            // Group by field + value
+            const grouped = {};
+            for (const r of junk.suspicious.records) {
+              const key = `${r.field}:${r.value}`;
+              if (!grouped[key]) grouped[key] = { field: r.field, value: r.value, count: 0 };
+              grouped[key].count++;
+            }
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">Suspicious Records (${junk.suspicious.count})</div>`;
+            for (const g of Object.values(grouped)) {
+              html += `<div class="bullet-sub">${g.field} = "${g.value}" (${g.count} records)</div>`;
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<p style="color:#22c55e;font-size:0.9rem;">No junk data detected!</p>';
+        }
+      } else if (checkKey === 'dataIntegrity') {
+        const intIssues = details.dataIntegrity.issues.filter(i => i.object === objectName);
+        if (intIssues.length > 0) {
+          html += `<h4>Integrity Issues <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();downloadCSV('dataIntegrity','${objectName}')">Download CSV to take action</button></h4>`;
+          html += '<div class="finding-list">';
+          // Group issues by type
+          const grouped = {};
+          for (const i of intIssues) {
+            if (!grouped[i.issue]) grouped[i.issue] = [];
+            grouped[i.issue].push(i);
+          }
+          const issueLabels = {
+            'amount_too_high': 'Unrealistic Amount (>$100M)',
+            'negative_amount': 'Negative Amount',
+            'past_close_date_still_open': 'Past Close Date (still open)',
+            'close_date_too_far': 'Close Date Too Far in Future',
+            'unrealistic_employees': 'Unrealistic Employee Count',
+            'zero_employees_high_revenue': 'Zero Employees but High Revenue',
+            'orphan_no_account': 'Orphan Record (no Account)',
+            'fake_conversion_status': 'Fake Conversion Status - Ex: Created to Converted, Lead conversion process Not followed',
+            'invalid_company': 'Invalid Company Name',
+            'zero_useful_data': 'Zero Useful Data - No email + no phone'
+          };
+          for (const [issue, records] of Object.entries(grouped)) {
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">${issueLabels[issue] || issue} (${records.length} records)</div>`;
+            html += '</div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<p style="color:#22c55e;font-size:0.9rem;">No integrity issues found!</p>';
+        }
+      } else if (checkKey === 'formatConsistency') {
+        const fmt = details.formatConsistency[objectName];
+        if (fmt && fmt.score < 100) {
+          html += `<h4>Format Issues <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();downloadCSV('formatConsistency','${objectName}')">Download CSV to take action</button></h4>`;
+          html += '<div class="finding-list">';
+          if (fmt.phoneFormats && Object.keys(fmt.phoneFormats).length > 1) {
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">Phone Format Inconsistency</div>`;
+            for (const [format, data] of Object.entries(fmt.phoneFormats)) {
+              html += `<div class="bullet-sub">${format}: ${data.count} records</div>`;
+            }
+            html += '</div>';
+          }
+          if (fmt.namingIssues && fmt.namingIssues.count > 0) {
+            html += '<div class="bullet-group">';
+            html += `<div class="bullet-main">Name Casing/Spacing Issues (${fmt.namingIssues.count})</div>`;
+            for (const name of fmt.namingIssues.examples.slice(0, 5)) {
+              html += `<div class="bullet-sub">"${name}"</div>`;
+            }
+            html += '</div>';
+          }
+          if (fmt.stateCountry) {
+            if (fmt.stateCountry.hasMixedStateFormats) {
+              html += '<div class="bullet-group">';
+              html += `<div class="bullet-main">State Format Inconsistency</div>`;
+              for (const [format, data] of Object.entries(fmt.stateCountry.stateFormats)) {
+                html += `<div class="bullet-sub">${format}: ${data.count} records</div>`;
+              }
+              html += '</div>';
+            }
+            if (fmt.stateCountry.countryIssues.count > 0) {
+              html += '<div class="bullet-group">';
+              html += `<div class="bullet-main">Country Format Inconsistency (${fmt.stateCountry.countryIssues.count} records)</div>`;
+              // Group by value to show distinct ones with count
+              const countryGrouped = {};
+              for (const r of fmt.stateCountry.countryIssues.records) {
+                if (!countryGrouped[r.value]) countryGrouped[r.value] = { count: 0, suggested: r.suggested };
+                countryGrouped[r.value].count++;
+              }
+              for (const [value, info] of Object.entries(countryGrouped)) {
+                html += `<div class="bullet-sub">"${value}" → should be "${info.suggested}" (${info.count} records)</div>`;
+              }
+              html += '</div>';
+            }
+          }
+          html += '</div>';
+        } else {
+          html += '<p style="color:#22c55e;font-size:0.9rem;">Formats are consistent!</p>';
+        }
+      }
+
+      return html || '<p style="color:#94a3b8;font-size:0.9rem;">No issues found.</p>';
+    }
+
+    function downloadCSV(checkType, objectName) {
+      const details = scanData.details;
+      let ids = [];
+      let filename = `${objectName}_${checkType}.csv`;
+
+      if (checkType === 'fieldCompleteness') {
+        const fields = details.fieldCompleteness[objectName].fields;
+        // Build a map: id -> set of missing fields
+        const idMissing = {};
+        const allFieldNames = Object.keys(fields);
+        for (const [fieldName, stats] of Object.entries(fields)) {
+          for (const id of stats.missingIds) {
+            if (!idMissing[id]) idMissing[id] = new Set();
+            idMissing[id].add(fieldName);
+          }
+        }
+        // Build CSV with columns per field
+        const header = 'Id,' + allFieldNames.join(',');
+        const rows = Object.entries(idMissing).map(([id, missingSet]) => {
+          const cols = allFieldNames.map(f => missingSet.has(f) ? `Missing ${f}` : '');
+          return id + ',' + cols.join(',');
+        });
+        const csv = header + '\n' + rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      } else if (checkType === 'duplicates') {
+        const dup = details.duplicates[objectName];
+        const basis = objectName === 'Account' ? 'Name' : 'Email';
+        const header = `Id,Duplicate ${basis}`;
+        const rows = dup.duplicateGroups.flatMap(g => g.ids.map(id => `${id},${g.value}`));
+        const csv = header + '\n' + rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      } else if (checkType === 'junkData') {
+        const junk = details.junkData[objectName];
+        ids = [...junk.junk.records, ...junk.suspicious.records].map(r => r.id);
+      } else if (checkType === 'dataIntegrity') {
+        const intIssues = details.dataIntegrity.issues.filter(i => i.object === objectName);
+        // Get all distinct issue types for this object
+        const issueTypes = [...new Set(intIssues.map(i => i.issue))];
+        const issueLabels = {
+          'amount_too_high': 'Unrealistic Amount (>$100M)',
+          'negative_amount': 'Negative Amount',
+          'past_close_date_still_open': 'Past Close Date (still open)',
+          'close_date_too_far': 'Close Date Too Far in Future',
+          'unrealistic_employees': 'Unrealistic Employee Count',
+          'zero_employees_high_revenue': 'Zero Employees but High Revenue',
+          'orphan_no_account': 'Orphan Record (no Account)',
+          'fake_conversion_status': 'Fake Conversion Status',
+          'invalid_company': 'Invalid Company Name',
+          'zero_useful_data': 'Zero Useful Data - No email + no phone'
+        };
+        // Build map: id -> set of issues
+        const idIssues = {};
+        for (const i of intIssues) {
+          if (!idIssues[i.id]) idIssues[i.id] = {};
+          idIssues[i.id][i.issue] = i.value || 'Yes';
+        }
+        // Build CSV with a column per issue type
+        const header = 'Id,' + issueTypes.map(t => csvEscape(issueLabels[t] || t)).join(',');
+        const rows = Object.entries(idIssues).map(([id, issues]) => {
+          const cols = issueTypes.map(t => issues[t] ? csvEscape(String(issues[t])) : '');
+          return id + ',' + cols.join(',');
+        });
+        const csv = header + '\n' + rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      } else if (checkType === 'formatConsistency') {
+        const fmt = details.formatConsistency[objectName];
+        if (fmt) {
+          // Build a map: id -> { phone, phoneFormat, name, state, stateFormat, country }
+          const recordMap = {};
+
+          // Phone data
+          if (fmt.phoneFormats) {
+            for (const [format, data] of Object.entries(fmt.phoneFormats)) {
+              for (const rec of (data.records || [])) {
+                if (!recordMap[rec.id]) recordMap[rec.id] = {};
+                recordMap[rec.id].phone = rec.value;
+                recordMap[rec.id].phoneFormat = format;
+              }
+            }
+          }
+
+          // Naming issues (Account only)
+          if (fmt.namingIssues && fmt.namingIssues.records) {
+            for (const rec of fmt.namingIssues.records) {
+              if (!recordMap[rec.id]) recordMap[rec.id] = {};
+              recordMap[rec.id].name = rec.value;
+              recordMap[rec.id].nameIssue = 'Casing/spacing issue';
+            }
+          }
+
+          // State/Country data
+          if (fmt.stateCountry) {
+            if (fmt.stateCountry.stateFormats) {
+              for (const [format, data] of Object.entries(fmt.stateCountry.stateFormats)) {
+                for (const rec of (data.records || [])) {
+                  if (!recordMap[rec.id]) recordMap[rec.id] = {};
+                  recordMap[rec.id].state = rec.value;
+                  recordMap[rec.id].stateFormat = format;
+                }
+              }
+            }
+            if (fmt.stateCountry.countryIssues && fmt.stateCountry.countryIssues.records) {
+              for (const rec of fmt.stateCountry.countryIssues.records) {
+                if (!recordMap[rec.id]) recordMap[rec.id] = {};
+                recordMap[rec.id].country = rec.value;
+                recordMap[rec.id].countryIssue = `Should be: ${rec.suggested}`;
+              }
+            }
+          }
+
+          // Build CSV
+          const header = 'Id,Phone,Phone Format,Name,Name Issue,State,State Format,Country,Country Issue';
+          const rows = Object.entries(recordMap).map(([id, d]) =>
+            `${id},${csvEscape(d.phone||'')},${csvEscape(d.phoneFormat||'')},${csvEscape(d.name||'')},${csvEscape(d.nameIssue||'')},${csvEscape(d.state||'')},${csvEscape(d.stateFormat||'')},${csvEscape(d.country||'')},${csvEscape(d.countryIssue||'')}`
+          );
+          const csv = header + '\n' + rows.join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+      }
+
+      const csv = 'Id\n' + ids.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvEscape(val) {
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    }
+
+    function scoreColor(score) {
+      if (score >= 90) return '#22c55e';
+      if (score >= 75) return '#84cc16';
+      if (score >= 60) return '#eab308';
+      if (score >= 40) return '#f97316';
+      return '#ef4444';
+    }
+
+    checkStatus();
+  </script>
+</body>
+</html>
