@@ -1,7 +1,8 @@
-require('dotenv').config();
+require('dotenv').config({ path: '.env' });
 const express = require('express');
 const session = require('express-session');
 const jsforce = require('jsforce');
+const path = require('path');
 
 const { runFullScan } = require('./scanner');
 
@@ -23,7 +24,7 @@ app.use(session({
 }));
 
 // Serve static files from public folder
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // JSforce OAuth2 config
@@ -31,6 +32,11 @@ const oauth2 = new jsforce.OAuth2({
   clientId: process.env.SF_CLIENT_ID,
   clientSecret: process.env.SF_CLIENT_SECRET,
   redirectUri: process.env.SF_CALLBACK_URL
+});
+
+// Health check (no session needed)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', env: process.env.NODE_ENV || 'development' });
 });
 
 // --- Auth Routes ---
