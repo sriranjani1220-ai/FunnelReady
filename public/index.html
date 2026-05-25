@@ -228,7 +228,114 @@
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Analytics Section */
+    #analytics {
+      display: none;
+      max-width: 900px;
+      margin: 2.5rem auto;
+      padding-top: 2rem;
+      border-top: 1px solid #334155;
+    }
+    #analytics h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    #analytics .analytics-subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #3b82f6;
+    }
+    .stat-value.bad { color: #ef4444; }
+    .stat-value.warn { color: #f97316; }
+    .stat-value.good { color: #22c55e; }
+    .stat-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 700px) {
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+    .chart-card h4 {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .chart-card canvas {
+      max-height: 220px;
+    }
+    .distribution-bar {
+      display: flex;
+      height: 32px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .distribution-bar div {
+      transition: width 0.5s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: white;
+    }
+    .dist-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .dist-legend span::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="header">
@@ -257,6 +364,43 @@
 
     <div id="object-scores" class="object-scores"></div>
     <div id="drilldown"></div>
+  </div>
+
+  <div id="analytics">
+    <h2>Statistical Analysis</h2>
+    <p class="analytics-subtitle">Comprehensive data quality metrics across your org</p>
+
+    <div id="stats-grid" class="stats-grid"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h4>DQ Score by Object</h4>
+        <canvas id="chart-objects"></canvas>
+      </div>
+      <div class="chart-card">
+        <h4>Issue Distribution by Category</h4>
+        <canvas id="chart-categories"></canvas>
+      </div>
+      <div class="chart-card">
+        <h4>Field Completeness by Object</h4>
+        <canvas id="chart-completeness"></canvas>
+      </div>
+      <div class="chart-card">
+        <h4>Data Health Breakdown</h4>
+        <canvas id="chart-health"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:1.5rem;">
+      <h4>Issue Severity Distribution (All Records)</h4>
+      <div id="severity-bar" class="distribution-bar"></div>
+      <div id="severity-legend" class="dist-legend"></div>
+    </div>
+
+    <div class="chart-card">
+      <h4>Check Scores Heatmap (Object x Category)</h4>
+      <canvas id="chart-heatmap"></canvas>
+    </div>
   </div>
 
   <script>
@@ -301,6 +445,7 @@
         if (!res.ok) throw new Error('Scan failed');
         scanData = await res.json();
         renderResults();
+        renderAnalytics();
       } catch (err) {
         alert('Scan failed: ' + err.message);
       } finally {
@@ -726,6 +871,217 @@
       if (score >= 60) return '#eab308';
       if (score >= 40) return '#f97316';
       return '#ef4444';
+    }
+
+    // --- Analytics Section ---
+    let chartInstances = [];
+
+    function renderAnalytics() {
+      document.getElementById('analytics').style.display = 'block';
+
+      // Destroy previous charts
+      chartInstances.forEach(c => c.destroy());
+      chartInstances = [];
+
+      const { objectScores, recordCounts } = scanData.summary;
+      const details = scanData.details;
+      const objects = ['Lead', 'Contact', 'Account', 'Opportunity'];
+
+      // --- Key Stats ---
+      const totalRecords = Object.values(recordCounts).reduce((a, b) => a + b, 0);
+      const totalMissing = objects.reduce((sum, obj) => {
+        return sum + Object.values(details.fieldCompleteness[obj].fields).reduce((s, f) => s + f.missing, 0);
+      }, 0);
+      const totalFields = objects.reduce((sum, obj) => {
+        return sum + Object.keys(details.fieldCompleteness[obj].fields).length * recordCounts[obj];
+      }, 0);
+      const totalDuplicates = objects.reduce((sum, obj) => sum + (details.duplicates[obj]?.count || 0), 0);
+      const totalJunk = objects.reduce((sum, obj) => {
+        const j = details.junkData[obj];
+        return sum + j.junk.count + j.suspicious.count;
+      }, 0);
+      const totalIntegrity = details.dataIntegrity.issues.length;
+      const completenessRate = totalFields ? ((totalFields - totalMissing) / totalFields * 100).toFixed(1) : 100;
+      const cleanRate = totalRecords ? ((totalRecords - totalDuplicates - totalJunk - totalIntegrity) / totalRecords * 100).toFixed(1) : 100;
+
+      document.getElementById('stats-grid').innerHTML = `
+        <div class="stat-card"><div class="stat-value">${totalRecords}</div><div class="stat-label">Total Records Scanned</div></div>
+        <div class="stat-card"><div class="stat-value ${completenessRate >= 80 ? 'good' : completenessRate >= 60 ? 'warn' : 'bad'}">${completenessRate}%</div><div class="stat-label">Field Completeness Rate</div></div>
+        <div class="stat-card"><div class="stat-value bad">${totalMissing}</div><div class="stat-label">Missing Field Values</div></div>
+        <div class="stat-card"><div class="stat-value bad">${totalDuplicates}</div><div class="stat-label">Duplicate Records</div></div>
+        <div class="stat-card"><div class="stat-value bad">${totalJunk}</div><div class="stat-label">Junk/Suspicious Records</div></div>
+        <div class="stat-card"><div class="stat-value bad">${totalIntegrity}</div><div class="stat-label">Integrity Violations</div></div>
+        <div class="stat-card"><div class="stat-value ${cleanRate >= 80 ? 'good' : cleanRate >= 60 ? 'warn' : 'bad'}">${cleanRate}%</div><div class="stat-label">Clean Record Rate</div></div>
+        <div class="stat-card"><div class="stat-value">${totalFields}</div><div class="stat-label">Total Fields Evaluated</div></div>
+      `;
+
+      // --- Chart 1: DQ Score by Object (Bar) ---
+      const ctx1 = document.getElementById('chart-objects').getContext('2d');
+      chartInstances.push(new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: objects,
+          datasets: [{
+            label: 'DQ Score',
+            data: objects.map(o => objectScores[o].score),
+            backgroundColor: objects.map(o => scoreColor(objectScores[o].score) + '99'),
+            borderColor: objects.map(o => scoreColor(objectScores[o].score)),
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      }));
+
+      // --- Chart 2: Issue Distribution by Category (Doughnut) ---
+      const categoryData = {
+        'Missing Fields': totalMissing,
+        'Duplicates': totalDuplicates,
+        'Junk Data': totalJunk,
+        'Integrity Issues': totalIntegrity,
+        'Format Issues': objects.reduce((sum, obj) => {
+          const fmt = details.formatConsistency[obj];
+          return sum + (100 - fmt.score);
+        }, 0)
+      };
+      const ctx2 = document.getElementById('chart-categories').getContext('2d');
+      chartInstances.push(new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(categoryData),
+          datasets: [{
+            data: Object.values(categoryData),
+            backgroundColor: ['#ef4444', '#f97316', '#eab308', '#8b5cf6', '#3b82f6'],
+            borderColor: '#0f172a',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } }
+          }
+        }
+      }));
+
+      // --- Chart 3: Field Completeness by Object (Horizontal Bar) ---
+      const ctx3 = document.getElementById('chart-completeness').getContext('2d');
+      chartInstances.push(new Chart(ctx3, {
+        type: 'bar',
+        data: {
+          labels: objects,
+          datasets: [{
+            label: 'Filled %',
+            data: objects.map(o => details.fieldCompleteness[o].score),
+            backgroundColor: '#22c55e99',
+            borderColor: '#22c55e',
+            borderWidth: 2
+          }, {
+            label: 'Missing %',
+            data: objects.map(o => 100 - details.fieldCompleteness[o].score),
+            backgroundColor: '#ef444499',
+            borderColor: '#ef4444',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          scales: {
+            x: { stacked: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+            y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } }
+        }
+      }));
+
+      // --- Chart 4: Data Health Breakdown (Polar Area) ---
+      const categories = ['Field Completeness', 'Duplicates', 'Format Consistency', 'Junk Data', 'Data Integrity'];
+      const avgScores = categories.map((_, i) => {
+        const keys = ['fieldCompleteness', 'duplicates', 'formatConsistency', 'junkData', 'dataIntegrity'];
+        return Math.round(objects.reduce((sum, obj) => sum + objectScores[obj].breakdown[keys[i]], 0) / objects.length);
+      });
+      const ctx4 = document.getElementById('chart-health').getContext('2d');
+      chartInstances.push(new Chart(ctx4, {
+        type: 'polarArea',
+        data: {
+          labels: categories,
+          datasets: [{
+            data: avgScores,
+            backgroundColor: ['#22c55e66', '#f9731666', '#3b82f666', '#eab30866', '#8b5cf666'],
+            borderColor: ['#22c55e', '#f97316', '#3b82f6', '#eab308', '#8b5cf6'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: { r: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8', backdropColor: 'transparent' }, grid: { color: '#334155' } } },
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } }
+        }
+      }));
+
+      // --- Severity Distribution Bar ---
+      const clean = totalRecords - totalDuplicates - totalJunk - totalIntegrity;
+      const sevBar = document.getElementById('severity-bar');
+      const cleanPct = (clean / totalRecords * 100).toFixed(1);
+      const dupPct = (totalDuplicates / totalRecords * 100).toFixed(1);
+      const junkPct = (totalJunk / totalRecords * 100).toFixed(1);
+      const intPct = (totalIntegrity / totalRecords * 100).toFixed(1);
+      sevBar.innerHTML = `
+        <div style="width:${cleanPct}%;background:#22c55e;">${cleanPct > 10 ? cleanPct + '%' : ''}</div>
+        <div style="width:${dupPct}%;background:#f97316;">${dupPct > 5 ? dupPct + '%' : ''}</div>
+        <div style="width:${junkPct}%;background:#eab308;">${junkPct > 5 ? junkPct + '%' : ''}</div>
+        <div style="width:${intPct}%;background:#ef4444;">${intPct > 5 ? intPct + '%' : ''}</div>
+      `;
+      document.getElementById('severity-legend').innerHTML = `
+        <span style="--c:#22c55e;">Clean (${clean})</span>
+        <span style="--c:#f97316;">Duplicates (${totalDuplicates})</span>
+        <span style="--c:#eab308;">Junk (${totalJunk})</span>
+        <span style="--c:#ef4444;">Integrity (${totalIntegrity})</span>
+      `.replace(/style="--c:(.*?);"/g, 'style="--c:$1" class="legend-dot" style="--dot-color:$1"');
+      // Fix legend dots
+      document.querySelectorAll('#severity-legend span').forEach(el => {
+        const color = el.textContent.includes('Clean') ? '#22c55e' : el.textContent.includes('Duplicates') ? '#f97316' : el.textContent.includes('Junk') ? '#eab308' : '#ef4444';
+        el.style.cssText = ``;
+        el.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color};margin-right:4px;vertical-align:middle;"></span>` + el.textContent;
+      });
+
+      // --- Chart 5: Heatmap (Object x Category) ---
+      const ctx5 = document.getElementById('chart-heatmap').getContext('2d');
+      const checkKeys = ['fieldCompleteness', 'duplicates', 'formatConsistency', 'junkData', 'dataIntegrity'];
+      const heatmapData = [];
+      objects.forEach((obj, oi) => {
+        checkKeys.forEach((key, ki) => {
+          heatmapData.push({ x: categories[ki], y: obj, v: objectScores[obj].breakdown[key] });
+        });
+      });
+      chartInstances.push(new Chart(ctx5, {
+        type: 'bar',
+        data: {
+          labels: categories,
+          datasets: objects.map((obj, i) => ({
+            label: obj,
+            data: checkKeys.map(k => objectScores[obj].breakdown[k]),
+            backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e', '#f97316'][i] + '99',
+            borderColor: ['#3b82f6', '#8b5cf6', '#22c55e', '#f97316'][i],
+            borderWidth: 1
+          }))
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }
+          },
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } }
+        }
+      }));
     }
 
     checkStatus();
