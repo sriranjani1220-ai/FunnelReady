@@ -14,7 +14,7 @@ app.set('trust proxy', 1);
 
 // Session middleware
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'funnel-ready-fallback-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
