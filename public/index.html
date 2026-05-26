@@ -300,7 +300,7 @@
       letter-spacing: 0.5px;
     }
     .chart-card canvas {
-      max-height: 220px;
+      max-height: 280px;
     }
     .distribution-bar {
       display: flex;
@@ -336,6 +336,21 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    // Fix blurry canvas on high-DPI screens
+    Chart.defaults.devicePixelRatio = window.devicePixelRatio || 2;
+    Chart.defaults.interaction.mode = 'nearest';
+    Chart.defaults.interaction.intersect = true;
+    // Enable tooltips with better styling
+    Chart.defaults.plugins.tooltip.enabled = true;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#1e293b';
+    Chart.defaults.plugins.tooltip.titleColor = '#e2e8f0';
+    Chart.defaults.plugins.tooltip.bodyColor = '#94a3b8';
+    Chart.defaults.plugins.tooltip.borderColor = '#334155';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+  </script>
 </head>
 <body>
   <div class="header">
