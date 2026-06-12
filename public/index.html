@@ -229,6 +229,115 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Tabs */
+    .tabs {
+      display: none;
+      max-width: 900px;
+      margin: 1.5rem auto 0;
+      border-bottom: 2px solid #334155;
+      display: flex;
+      gap: 0;
+    }
+    .tabs.visible { display: flex; }
+    .tab {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .tab:hover { color: #94a3b8; }
+    .tab.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+    .tab.disabled {
+      color: #334155;
+      cursor: not-allowed;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Feature 2: Funnel Health */
+    #funnel-results { display: none; max-width: 900px; margin: 2rem auto; }
+    .funnel-checks {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .funnel-check-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      background: #1e293b;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .funnel-check-row:hover { border-color: #334155; }
+    .funnel-check-row.active { border-color: #3b82f6; }
+    .funnel-check-name { font-size: 0.95rem; }
+    .funnel-check-score { font-weight: 700; font-size: 1.1rem; }
+    .funnel-detail-panel {
+      display: none;
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-top: 0.5rem;
+      animation: fadeIn 0.2s;
+    }
+    .funnel-detail-panel.visible { display: block; }
+    .funnel-stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #334155;
+      font-size: 0.9rem;
+    }
+    .funnel-stat-row:last-child { border-bottom: none; }
+    .funnel-stat-label { color: #94a3b8; }
+    .funnel-stat-value { font-weight: 600; }
+    .funnel-bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 120px;
+      margin: 1rem 0;
+      padding-top: 0.5rem;
+    }
+    .funnel-bar {
+      flex: 1;
+      background: #3b82f699;
+      border-radius: 4px 4px 0 0;
+      position: relative;
+      min-width: 30px;
+      transition: height 0.5s;
+    }
+    .funnel-bar-label {
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .funnel-bar-value {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
     /* Analytics Section */
     #analytics {
       display: none;
@@ -371,6 +480,17 @@
     </div>
   </div>
 
+  <div class="tabs" id="feature-tabs">
+    <div class="tab active" onclick="switchTab('dq')">Data Quality</div>
+    <div class="tab" onclick="switchTab('funnel')">Funnel Health</div>
+    <div class="tab" onclick="switchTab('pipeline')">Pipeline Integrity</div>
+    <div class="tab" onclick="switchTab('relationships')">Relationships</div>
+    <div class="tab disabled">Lead Mgmt</div>
+    <div class="tab disabled">AI Readiness</div>
+    <div class="tab disabled">Recommendations</div>
+  </div>
+
+  <div id="tab-dq" class="tab-content active">
   <div id="results">
     <div class="grade-card">
       <div id="grade-letter" class="grade-letter"></div>
@@ -417,9 +537,615 @@
       <canvas id="chart-heatmap"></canvas>
     </div>
   </div>
+  </div><!-- end tab-dq -->
+
+  <div id="tab-funnel" class="tab-content">
+    <div id="funnel-results">
+      <div class="grade-card">
+        <div id="funnel-grade-letter" class="grade-letter"></div>
+        <div id="funnel-grade-score" class="grade-score"></div>
+        <div class="record-counts" id="funnel-record-counts"></div>
+      </div>
+      <div class="funnel-checks" id="funnel-checks"></div>
+    </div>
+  </div>
+
+  <div id="tab-pipeline" class="tab-content">
+    <div id="pipeline-results">
+      <div class="grade-card">
+        <div id="pipeline-grade-letter" class="grade-letter"></div>
+        <div id="pipeline-grade-score" class="grade-score"></div>
+        <div class="record-counts" id="pipeline-record-counts"></div>
+      </div>
+      <div class="funnel-checks" id="pipeline-checks"></div>
+    </div>
+  </div>
+
+  <div id="tab-relationships" class="tab-content">
+    <div id="relationship-results">
+      <div class="grade-card">
+        <div id="relationship-grade-letter" class="grade-letter"></div>
+        <div id="relationship-grade-score" class="grade-score"></div>
+        <div class="record-counts" id="relationship-record-counts"></div>
+      </div>
+      <div class="funnel-checks" id="relationship-checks"></div>
+    </div>
+  </div>
 
   <script>
     let scanData = null;
+    let funnelData = null;
+    let pipelineData = null;
+    let relationshipData = null;
+
+    // --- Tab Switching ---
+    function switchTab(tabId) {
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      const tabs = document.querySelectorAll('.tab');
+      const tabIndex = { dq: 0, funnel: 1, pipeline: 2, relationships: 3 };
+      if (tabIndex[tabId] !== undefined) tabs[tabIndex[tabId]].classList.add('active');
+
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const tabEl = document.getElementById('tab-' + tabId);
+      if (tabEl) tabEl.classList.add('active');
+
+      // Auto-run scans if not loaded yet
+      if (tabId === 'funnel' && !funnelData && scanData) startFunnelScan();
+      if (tabId === 'pipeline' && !pipelineData && scanData) startPipelineScan();
+      if (tabId === 'relationships' && !relationshipData && scanData) startRelationshipScan();
+    }
+
+    // --- Funnel Scan ---
+    async function startFunnelScan() {
+      const resultsEl = document.getElementById('funnel-results');
+      resultsEl.style.display = 'block';
+      document.getElementById('funnel-grade-letter').textContent = '...';
+      document.getElementById('funnel-grade-letter').className = 'grade-letter';
+      document.getElementById('funnel-grade-score').textContent = 'Scanning funnel health...';
+      document.getElementById('funnel-checks').innerHTML = '<div style="text-align:center;padding:2rem;"><span class="spinner"></span> Analyzing your funnel...</div>';
+
+      try {
+        const res = await fetch('/api/funnel-scan');
+        if (!res.ok) throw new Error('Funnel scan failed');
+        funnelData = await res.json();
+        renderFunnelResults();
+      } catch (err) {
+        document.getElementById('funnel-checks').innerHTML = '<p style="color:#ef4444;text-align:center;">Funnel scan failed: ' + err.message + '</p>';
+      }
+    }
+
+    function renderFunnelResults() {
+      const { overallGrade, recordCounts, checkScores } = funnelData.summary;
+
+      // Grade card
+      const gradeLetter = document.getElementById('funnel-grade-letter');
+      gradeLetter.textContent = overallGrade.grade;
+      gradeLetter.className = 'grade-letter grade-' + overallGrade.grade;
+      document.getElementById('funnel-grade-score').textContent = 'Funnel Health Score: ' + overallGrade.score + '/100';
+
+      document.getElementById('funnel-record-counts').innerHTML =
+        Object.entries(recordCounts).map(([obj, count]) =>
+          '<div class="record-count"><strong>' + count + '</strong> ' + obj + '</div>'
+        ).join('');
+
+      // Check rows
+      const checkNames = {
+        leadConversion: 'Lead Conversion Rate',
+        leadAging: 'Lead Aging & Stuck Leads',
+        pipelineDistribution: 'Pipeline Stage Distribution',
+        stalePipeline: 'Stale Pipeline',
+        stageVelocity: 'Deal Cycle Velocity',
+        winLoss: 'Win/Loss Analysis',
+        leadSourceROI: 'Lead Source Attribution'
+      };
+
+      let html = '';
+      for (const [key, score] of Object.entries(checkScores)) {
+        html += '<div class="funnel-check-row" onclick="toggleFunnelDetail(\'' + key + '\', this)">' +
+          '<span class="funnel-check-name">' + checkNames[key] + '</span>' +
+          '<span class="funnel-check-score" style="color:' + scoreColor(score) + '">' + score + '/100</span>' +
+          '</div>' +
+          '<div class="funnel-detail-panel" id="funnel-detail-' + key + '">' +
+          getFunnelDetailContent(key) +
+          '</div>';
+      }
+
+      document.getElementById('funnel-checks').innerHTML = html;
+    }
+
+    function toggleFunnelDetail(key, rowEl) {
+      const panel = document.getElementById('funnel-detail-' + key);
+      const isVisible = panel.classList.contains('visible');
+
+      // Close all panels
+      document.querySelectorAll('.funnel-detail-panel').forEach(p => p.classList.remove('visible'));
+      document.querySelectorAll('.funnel-check-row').forEach(r => r.classList.remove('active'));
+
+      if (!isVisible) {
+        panel.classList.add('visible');
+        rowEl.classList.add('active');
+      }
+    }
+
+    function getFunnelDetailContent(key) {
+      const d = funnelData.details;
+      let html = '';
+
+      if (key === 'leadConversion') {
+        const lc = d.leadConversion;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Leads</span><span class="funnel-stat-value">' + lc.total + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Converted</span><span class="funnel-stat-value" style="color:#22c55e">' + lc.converted + ' (' + lc.conversionRate + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Unconverted</span><span class="funnel-stat-value" style="color:#f97316">' + lc.unconverted + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Qualified but Never Converted</span><span class="funnel-stat-value" style="color:#ef4444">' + lc.qualifiedUnconverted + '</span></div>';
+        if (Object.keys(lc.byStatus).length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Lead Status Distribution</h4>';
+          html += '<div class="funnel-bar-chart" style="margin-bottom:2rem;">';
+          const maxCount = Math.max(...Object.values(lc.byStatus).map(s => s.count));
+          for (const [status, data] of Object.entries(lc.byStatus)) {
+            const height = maxCount > 0 ? Math.max(5, (data.count / maxCount) * 100) : 5;
+            html += '<div class="funnel-bar" style="height:' + height + '%;">' +
+              '<span class="funnel-bar-value">' + data.count + '</span>' +
+              '<span class="funnel-bar-label">' + status + '</span></div>';
+          }
+          html += '</div>';
+        }
+      } else if (key === 'leadAging') {
+        const la = d.leadAging;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Open Leads</span><span class="funnel-stat-value">' + la.openLeadCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Average Age</span><span class="funnel-stat-value">' + la.avgAgeDays + ' days</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Stuck 90+ Days</span><span class="funnel-stat-value" style="color:#ef4444">' + la.stuckCount + '</span></div>';
+        html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Age Distribution</h4>';
+        html += '<div class="funnel-bar-chart" style="margin-bottom:2rem;">';
+        const maxAge = Math.max(...Object.values(la.aging).map(a => a.count));
+        for (const [bucket, data] of Object.entries(la.aging)) {
+          const height = maxAge > 0 ? Math.max(5, (data.count / maxAge) * 100) : 5;
+          const color = bucket === '90+ days' ? '#ef4444' : bucket.includes('61') ? '#f97316' : '#3b82f6';
+          html += '<div class="funnel-bar" style="height:' + height + '%;background:' + color + '99;">' +
+            '<span class="funnel-bar-value">' + data.count + '</span>' +
+            '<span class="funnel-bar-label">' + bucket + '</span></div>';
+        }
+        html += '</div>';
+      } else if (key === 'pipelineDistribution') {
+        const pd = d.pipelineDistribution;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Open Opportunities</span><span class="funnel-stat-value">' + pd.totalOpen + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Open Pipeline Value</span><span class="funnel-stat-value">$' + pd.totalAmount.toLocaleString() + '</span></div>';
+        if (pd.topHeavy) html += '<div class="funnel-stat-row"><span class="funnel-stat-label" style="color:#f97316">Warning</span><span class="funnel-stat-value" style="color:#f97316">Pipeline is top-heavy (>60% in early stages)</span></div>';
+        if (pd.bottomHeavy) html += '<div class="funnel-stat-row"><span class="funnel-stat-label" style="color:#f97316">Warning</span><span class="funnel-stat-value" style="color:#f97316">Pipeline is bottom-heavy (>50% in late stages)</span></div>';
+        html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Stage Distribution</h4>';
+        html += '<div class="funnel-bar-chart" style="margin-bottom:2rem;">';
+        const maxStage = Math.max(...Object.values(pd.distribution).map(s => s.count));
+        for (const [stage, data] of Object.entries(pd.distribution)) {
+          const height = maxStage > 0 ? Math.max(5, (data.count / maxStage) * 100) : 5;
+          html += '<div class="funnel-bar" style="height:' + height + '%;">' +
+            '<span class="funnel-bar-value">' + data.count + ' ($' + (data.amount / 1000).toFixed(0) + 'K)</span>' +
+            '<span class="funnel-bar-label">' + stage + '</span></div>';
+        }
+        html += '</div>';
+      } else if (key === 'stalePipeline') {
+        const sp = d.stalePipeline;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Open</span><span class="funnel-stat-value">' + sp.totalOpen + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Stale (Past Close Date)</span><span class="funnel-stat-value" style="color:#ef4444">' + sp.staleCount + ' (' + sp.stalePct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Zombie (6+ Months Overdue)</span><span class="funnel-stat-value" style="color:#ef4444">' + sp.zombieCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Stale Pipeline Value</span><span class="funnel-stat-value" style="color:#f97316">$' + sp.totalStaleAmount.toLocaleString() + '</span></div>';
+        if (sp.staleOpps.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Top Stale Opportunities</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const o of sp.staleOpps.slice(0, 10)) {
+            html += '<div class="bullet-main">' + o.name + ' <span style="color:#ef4444;">(' + o.daysPastDue + ' days overdue, $' + o.amount.toLocaleString() + ')</span></div>';
+          }
+          html += '</div>';
+        }
+      } else if (key === 'stageVelocity') {
+        const sv = d.stageVelocity;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Closed Deals</span><span class="funnel-stat-value">' + sv.totalClosed + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Avg Deal Cycle</span><span class="funnel-stat-value">' + sv.avgCycleDays + ' days</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Avg Won Deal Cycle</span><span class="funnel-stat-value" style="color:#22c55e">' + sv.avgWonCycle + ' days</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Avg Lost Deal Cycle</span><span class="funnel-stat-value" style="color:#ef4444">' + sv.avgLostCycle + ' days</span></div>';
+        html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Cycle Time Distribution</h4>';
+        html += '<div class="funnel-bar-chart" style="margin-bottom:2rem;">';
+        const maxCycle = Math.max(...Object.values(sv.cycleBuckets));
+        for (const [bucket, count] of Object.entries(sv.cycleBuckets)) {
+          const height = maxCycle > 0 ? Math.max(5, (count / maxCycle) * 100) : 5;
+          html += '<div class="funnel-bar" style="height:' + height + '%;">' +
+            '<span class="funnel-bar-value">' + count + '</span>' +
+            '<span class="funnel-bar-label">' + bucket + '</span></div>';
+        }
+        html += '</div>';
+      } else if (key === 'winLoss') {
+        const wl = d.winLoss;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Closed</span><span class="funnel-stat-value">' + wl.totalClosed + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won</span><span class="funnel-stat-value" style="color:#22c55e">' + wl.won + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Lost</span><span class="funnel-stat-value" style="color:#ef4444">' + wl.lost + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Win Rate</span><span class="funnel-stat-value" style="color:' + (wl.winRate >= 20 ? '#22c55e' : '#ef4444') + '">' + wl.winRate + '%</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Won Revenue</span><span class="funnel-stat-value">$' + wl.totalWonAmount.toLocaleString() + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Avg Deal Size</span><span class="funnel-stat-value">$' + wl.avgDealSize.toLocaleString() + '</span></div>';
+        if (wl.wonNoAmount > 0) {
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label" style="color:#f97316">Won with $0 Amount</span><span class="funnel-stat-value" style="color:#f97316">' + wl.wonNoAmount + ' deals</span></div>';
+        }
+        if (Object.keys(wl.bySource).length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Win Rate by Lead Source</h4>';
+          for (const [source, data] of Object.entries(wl.bySource)) {
+            html += '<div class="funnel-stat-row"><span class="funnel-stat-label">' + source + ' (' + data.total + ' deals)</span><span class="funnel-stat-value" style="color:' + (data.winRate >= 20 ? '#22c55e' : '#ef4444') + '">' + data.winRate + '% win rate</span></div>';
+          }
+        }
+      } else if (key === 'leadSourceROI') {
+        const ls = d.leadSourceROI;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Lead Sources Tracked</span><span class="funnel-stat-value">' + ls.totalSources + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Leads Missing Source</span><span class="funnel-stat-value" style="color:' + (ls.noSourcePct > 25 ? '#ef4444' : '#22c55e') + '">' + ls.noSourceLeads + ' (' + ls.noSourcePct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Opps Missing Source</span><span class="funnel-stat-value" style="color:' + (ls.noSourceOpps > 10 ? '#f97316' : '#22c55e') + '">' + ls.noSourceOpps + '</span></div>';
+        if (Object.keys(ls.sources).length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Performance by Source</h4>';
+          const sorted = Object.entries(ls.sources).sort((a, b) => b[1].leads - a[1].leads);
+          for (const [source, data] of sorted) {
+            html += '<div class="funnel-stat-row"><span class="funnel-stat-label">' + source + ' (' + data.leads + ' leads)</span><span class="funnel-stat-value">' + data.conversionRate + '% conv &rarr; ' + data.wonOpps + ' won ($' + data.wonAmount.toLocaleString() + ')</span></div>';
+          }
+        }
+      }
+
+      return html || '<p style="color:#94a3b8;">No data available.</p>';
+    }
+
+    // --- Pipeline Scan ---
+    async function startPipelineScan() {
+      document.getElementById('pipeline-results').style.display = 'block';
+      document.getElementById('pipeline-grade-letter').textContent = '...';
+      document.getElementById('pipeline-grade-letter').className = 'grade-letter';
+      document.getElementById('pipeline-grade-score').textContent = 'Analyzing pipeline integrity...';
+      document.getElementById('pipeline-checks').innerHTML = '<div style="text-align:center;padding:2rem;"><span class="spinner"></span> Checking pipeline...</div>';
+
+      try {
+        const res = await fetch('/api/pipeline-scan');
+        if (!res.ok) throw new Error('Pipeline scan failed');
+        pipelineData = await res.json();
+        renderPipelineResults();
+      } catch (err) {
+        document.getElementById('pipeline-checks').innerHTML = '<p style="color:#ef4444;text-align:center;">Pipeline scan failed: ' + err.message + '</p>';
+      }
+    }
+
+    function renderPipelineResults() {
+      const { overallGrade, recordCounts, checkScores } = pipelineData.summary;
+
+      const gradeLetter = document.getElementById('pipeline-grade-letter');
+      gradeLetter.textContent = overallGrade.grade;
+      gradeLetter.className = 'grade-letter grade-' + overallGrade.grade;
+      document.getElementById('pipeline-grade-score').textContent = 'Pipeline Integrity Score: ' + overallGrade.score + '/100';
+
+      document.getElementById('pipeline-record-counts').innerHTML =
+        Object.entries(recordCounts).map(([label, count]) =>
+          '<div class="record-count"><strong>' + count + '</strong> ' + label + '</div>'
+        ).join('');
+
+      const checkNames = {
+        skippedStages: 'Skipped & Regressed Stages',
+        deadPipeline: 'Dead Pipeline',
+        amountAnomalies: 'Amount Anomalies',
+        ownerConcentration: 'Owner Concentration Risk',
+        forecastHygiene: 'Forecast Hygiene',
+        closedWonIntegrity: 'Closed Won Integrity',
+        nextStepDiscipline: 'Next Step Discipline'
+      };
+
+      let html = '';
+      for (const [key, score] of Object.entries(checkScores)) {
+        html += '<div class="funnel-check-row" onclick="togglePipelineDetail(\'' + key + '\', this)">' +
+          '<span class="funnel-check-name">' + checkNames[key] + '</span>' +
+          '<span class="funnel-check-score" style="color:' + scoreColor(score) + '">' + score + '/100</span>' +
+          '</div>' +
+          '<div class="funnel-detail-panel" id="pipeline-detail-' + key + '">' +
+          getPipelineDetailContent(key) +
+          '</div>';
+      }
+
+      document.getElementById('pipeline-checks').innerHTML = html;
+    }
+
+    function togglePipelineDetail(key, rowEl) {
+      const panel = document.getElementById('pipeline-detail-' + key);
+      const isVisible = panel.classList.contains('visible');
+
+      document.querySelectorAll('#tab-pipeline .funnel-detail-panel').forEach(p => p.classList.remove('visible'));
+      document.querySelectorAll('#tab-pipeline .funnel-check-row').forEach(r => r.classList.remove('active'));
+
+      if (!isVisible) {
+        panel.classList.add('visible');
+        rowEl.classList.add('active');
+      }
+    }
+
+    function getPipelineDetailContent(key) {
+      const d = pipelineData.details;
+      let html = '';
+
+      if (key === 'skippedStages') {
+        const ss = d.skippedStages;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Stage History Available</span><span class="funnel-stat-value">' + (ss.historyAvailable ? 'Yes' : 'No (using heuristics)') + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Skipped Stages</span><span class="funnel-stat-value" style="color:#f97316">' + ss.skippedCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Stage Regressions</span><span class="funnel-stat-value" style="color:#ef4444">' + ss.regressedCount + '</span></div>';
+        if (ss.skipped.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Skipped Stage Details</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const s of ss.skipped) {
+            html += '<div class="bullet-main">' + s.name + ': ' + s.from + ' &rarr; ' + s.to + ' <span style="color:#f97316;">(skipped ' + s.skippedCount + ' stages)</span></div>';
+          }
+          html += '</div>';
+        }
+        if (ss.regressed.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Stage Regressions</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const r of ss.regressed) {
+            html += '<div class="bullet-main">' + r.name + ': ' + r.from + ' &rarr; ' + r.to + ' <span style="color:#ef4444;">(went backward)</span></div>';
+          }
+          html += '</div>';
+        }
+
+      } else if (key === 'deadPipeline') {
+        const dp = d.deadPipeline;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Open Pipeline</span><span class="funnel-stat-value">' + dp.totalOpen + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Dead Deals</span><span class="funnel-stat-value" style="color:#ef4444">' + dp.deadCount + ' (' + dp.deadPct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">No Activity (no next step + past due)</span><span class="funnel-stat-value" style="color:#f97316">' + dp.noActivityCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Dead Pipeline Value</span><span class="funnel-stat-value" style="color:#ef4444">$' + dp.totalDeadAmount.toLocaleString() + '</span></div>';
+        if (dp.deadDeals.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Top Dead Deals</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const dd of dp.deadDeals.slice(0, 10)) {
+            html += '<div class="bullet-main">' + dd.name + ' <span style="color:#ef4444;">($' + dd.amount.toLocaleString() + ' | ' + dd.reason + ')</span></div>';
+          }
+          html += '</div>';
+        }
+
+      } else if (key === 'amountAnomalies') {
+        const aa = d.amountAnomalies;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Median Deal Size</span><span class="funnel-stat-value">$' + aa.stats.median.toLocaleString() + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Mean Deal Size</span><span class="funnel-stat-value">$' + aa.stats.mean.toLocaleString() + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Range</span><span class="funnel-stat-value">$' + aa.stats.min.toLocaleString() + ' - $' + aa.stats.max.toLocaleString() + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Missing Amount</span><span class="funnel-stat-value" style="color:#f97316">' + aa.noAmountCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Zero Amount</span><span class="funnel-stat-value" style="color:#ef4444">' + aa.zeroAmountCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Negative Amount</span><span class="funnel-stat-value" style="color:#ef4444">' + aa.negativeCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Outliers (unusually large)</span><span class="funnel-stat-value" style="color:#f97316">' + aa.outlierCount + '</span></div>';
+        if (aa.anomalies.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Anomalies</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const a of aa.anomalies) {
+            html += '<div class="bullet-main">' + a.name + ': $' + (a.amount || 0).toLocaleString() + ' <span style="color:#f97316;">(' + a.type + ')</span></div>';
+          }
+          html += '</div>';
+        }
+
+      } else if (key === 'ownerConcentration') {
+        const oc = d.ownerConcentration;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Open Pipeline</span><span class="funnel-stat-value">' + oc.totalOpen + ' opps</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Distinct Owners</span><span class="funnel-stat-value">' + oc.ownerCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Top Owner Share</span><span class="funnel-stat-value" style="color:' + (oc.topOwnerPct > 60 ? '#ef4444' : '#22c55e') + '">' + oc.topOwnerPct + '%</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Risk Level</span><span class="funnel-stat-value" style="color:' + (oc.singleOwner ? '#ef4444' : oc.topOwnerPct > 60 ? '#f97316' : '#22c55e') + '">' + oc.concentration + '</span></div>';
+        html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Distribution by Owner</h4>';
+        const sorted = Object.entries(oc.byOwner).sort((a, b) => b[1].count - a[1].count);
+        for (const [owner, data] of sorted) {
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">' + owner.substring(0, 15) + '...</span><span class="funnel-stat-value">' + data.count + ' opps (' + data.pct + '%) | $' + data.amount.toLocaleString() + '</span></div>';
+        }
+
+      } else if (key === 'forecastHygiene') {
+        const fh = d.forecastHygiene;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Open Pipeline</span><span class="funnel-stat-value">' + fh.totalOpen + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Missing Close Date</span><span class="funnel-stat-value" style="color:#ef4444">' + fh.missingCloseDate + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Missing Amount</span><span class="funnel-stat-value" style="color:#ef4444">' + fh.missingAmount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Past Close Date (still open)</span><span class="funnel-stat-value" style="color:#f97316">' + fh.pastCloseDate + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Close Date 18+ Months Out</span><span class="funnel-stat-value" style="color:#f97316">' + fh.farFuture + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Probability Mismatches</span><span class="funnel-stat-value" style="color:#f97316">' + fh.probMismatch + '</span></div>';
+        if (fh.pastCloseDateOpps.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Opps Past Close Date</h4>';
+          html += '<div class="finding-list" style="max-height:150px;overflow-y:auto;">';
+          for (const o of fh.pastCloseDateOpps.slice(0, 8)) {
+            html += '<div class="bullet-main">' + o.name + ' <span style="color:#f97316;">(Close: ' + o.closeDate + ' | Stage: ' + o.stage + ')</span></div>';
+          }
+          html += '</div>';
+        }
+
+      } else if (key === 'closedWonIntegrity') {
+        const cw = d.closedWonIntegrity;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Closed Won</span><span class="funnel-stat-value">' + cw.totalWon + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Issues Found</span><span class="funnel-stat-value" style="color:' + (cw.issueCount > 0 ? '#ef4444' : '#22c55e') + '">' + cw.issueCount + '</span></div>';
+        if (cw.noAmountCount) html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won with $0</span><span class="funnel-stat-value" style="color:#ef4444">' + cw.noAmountCount + '</span></div>';
+        if (cw.noAccountCount) html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won with No Account</span><span class="funnel-stat-value" style="color:#ef4444">' + cw.noAccountCount + '</span></div>';
+        if (cw.junkNameCount) html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won with Junk Name</span><span class="funnel-stat-value" style="color:#f97316">' + cw.junkNameCount + '</span></div>';
+        if (cw.sameDayCount) html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won Same Day (>$5K)</span><span class="funnel-stat-value" style="color:#f97316">' + cw.sameDayCount + '</span></div>';
+        if (cw.noTypeCount) html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Won with No Type</span><span class="funnel-stat-value" style="color:#f97316">' + cw.noTypeCount + '</span></div>';
+        if (cw.issues.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Issue Details</h4>';
+          html += '<div class="finding-list" style="max-height:200px;overflow-y:auto;">';
+          for (const i of cw.issues.slice(0, 12)) {
+            html += '<div class="bullet-main">' + i.name + ': <span style="color:#f97316;">' + i.issue + (i.value ? ' (' + i.value + ')' : '') + '</span></div>';
+          }
+          html += '</div>';
+        }
+
+      } else if (key === 'nextStepDiscipline') {
+        const ns = d.nextStepDiscipline;
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Open Pipeline</span><span class="funnel-stat-value">' + ns.totalOpen + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Missing Next Step</span><span class="funnel-stat-value" style="color:#ef4444">' + ns.missingNextStep + ' (' + ns.missingPct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Vague Next Step</span><span class="funnel-stat-value" style="color:#f97316">' + ns.vagueNextStep + ' (' + ns.vaguePct + '%)</span></div>';
+        if (Object.keys(ns.byStage).length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Next Step Discipline by Stage</h4>';
+          for (const [stage, data] of Object.entries(ns.byStage)) {
+            const missPct = data.total > 0 ? Math.round((data.missing / data.total) * 100) : 0;
+            html += '<div class="funnel-stat-row"><span class="funnel-stat-label">' + stage + ' (' + data.total + ' opps)</span><span class="funnel-stat-value" style="color:' + (missPct > 50 ? '#ef4444' : '#22c55e') + '">' + missPct + '% missing</span></div>';
+          }
+        }
+        if (ns.vagueExamples.length > 0) {
+          html += '<h4 style="margin:1rem 0 0.5rem;font-size:0.85rem;color:#94a3b8;">Vague Next Steps</h4>';
+          html += '<div class="finding-list" style="max-height:150px;overflow-y:auto;">';
+          for (const v of ns.vagueExamples) {
+            html += '<div class="bullet-main">' + v.name + ': <span style="color:#f97316;">"' + v.nextStep + '"</span></div>';
+          }
+          html += '</div>';
+        }
+      }
+
+      return html || '<p style="color:#94a3b8;">No data available.</p>';
+    }
+
+    // --- Relationship Scan (Feature 4) ---
+    async function startRelationshipScan() {
+      document.getElementById('relationship-results').style.display = 'block';
+      document.getElementById('relationship-grade-letter').textContent = '...';
+      document.getElementById('relationship-grade-letter').className = 'grade-letter';
+      document.getElementById('relationship-grade-score').textContent = 'Analyzing record relationships...';
+      document.getElementById('relationship-checks').innerHTML = '<div style="text-align:center;padding:2rem;"><span class="spinner"></span> Checking relationships...</div>';
+
+      try {
+        const res = await fetch('/api/relationship-scan');
+        if (!res.ok) throw new Error('Relationship scan failed');
+        relationshipData = await res.json();
+        renderRelationshipResults();
+      } catch (err) {
+        document.getElementById('relationship-checks').innerHTML = '<p style="color:#ef4444;text-align:center;">Relationship scan failed: ' + err.message + '</p>';
+      }
+    }
+
+    function renderRelationshipResults() {
+      const { overallGrade, recordCounts, checkScores } = relationshipData.summary;
+
+      const gradeLetter = document.getElementById('relationship-grade-letter');
+      gradeLetter.textContent = overallGrade.grade;
+      gradeLetter.className = 'grade-letter grade-' + overallGrade.grade;
+      document.getElementById('relationship-grade-score').textContent = 'Relationship Audit Score: ' + overallGrade.score + '/100';
+
+      document.getElementById('relationship-record-counts').innerHTML =
+        Object.entries(recordCounts).map(([label, count]) =>
+          '<div class="record-count"><strong>' + count + '</strong> ' + label + '</div>'
+        ).join('');
+
+      const checkNames = {
+        orphanAccounts: 'Orphan Accounts',
+        orphanContacts: 'Orphan Contacts',
+        disconnectedOpps: 'Disconnected Opportunities',
+        accountsMissingContacts: 'Accounts Missing Contacts',
+        accountsMissingOpps: 'Accounts Missing Opportunities',
+        contactOppGaps: 'Contact-to-Opportunity Gaps',
+        completeness: 'Relationship Completeness'
+      };
+
+      let html = '';
+      for (const [key, score] of Object.entries(checkScores)) {
+        html += '<div class="funnel-check-row" onclick="toggleRelationshipDetail(\'' + key + '\', this)">' +
+          '<span class="funnel-check-name">' + checkNames[key] + '</span>' +
+          '<span class="funnel-check-score" style="color:' + scoreColor(score) + '">' + score + '/100</span>' +
+          '</div>' +
+          '<div class="funnel-detail-panel" id="relationship-detail-' + key + '">' +
+          getRelationshipDetailContent(key) +
+          '</div>';
+      }
+
+      document.getElementById('relationship-checks').innerHTML = html;
+    }
+
+    function toggleRelationshipDetail(key, rowEl) {
+      const panel = document.getElementById('relationship-detail-' + key);
+      const isVisible = panel.classList.contains('visible');
+
+      document.querySelectorAll('#tab-relationships .funnel-detail-panel').forEach(p => p.classList.remove('visible'));
+      document.querySelectorAll('#tab-relationships .funnel-check-row').forEach(r => r.classList.remove('active'));
+
+      if (!isVisible) {
+        panel.classList.add('visible');
+        rowEl.classList.add('active');
+      }
+    }
+
+    function getRelationshipDetailContent(key) {
+      const d = relationshipData.details;
+      let html = '';
+
+      if (key === 'orphanAccounts') {
+        const oa = d.orphanAccounts;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Accounts that have zero Contacts and zero Opportunities linked to them. These are "dead weight" records that clutter your CRM and provide no value to sales or AI models.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Accounts</span><span class="funnel-stat-value">' + oa.totalAccounts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Orphan Accounts</span><span class="funnel-stat-value" style="color:#ef4444">' + oa.orphanCount + ' (' + oa.orphanPct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Linked Accounts</span><span class="funnel-stat-value" style="color:#22c55e">' + (oa.totalAccounts - oa.orphanCount) + '</span></div>';
+
+      } else if (key === 'orphanContacts') {
+        const oc = d.orphanContacts;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Contacts floating without an Account. These "homeless" contacts break the Account-Contact hierarchy, making it impossible to see the full picture of who you\'re engaging at each company.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Contacts</span><span class="funnel-stat-value">' + oc.totalContacts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">No Account Linked</span><span class="funnel-stat-value" style="color:#ef4444">' + oc.noAccountCount + ' (' + oc.orphanPct + '%)</span></div>';
+        if (oc.brokenLinkCount > 0) {
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Broken Account Links</span><span class="funnel-stat-value" style="color:#ef4444">' + oc.brokenLinkCount + '</span></div>';
+        }
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Properly Linked</span><span class="funnel-stat-value" style="color:#22c55e">' + (oc.totalContacts - oc.noAccountCount) + '</span></div>';
+
+      } else if (key === 'disconnectedOpps') {
+        const dop = d.disconnectedOpps;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Opportunities with no Account linked, or linked to an Account that has zero Contacts. These deals exist in isolation — you\'re tracking revenue with no connection to the people or company involved.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Opportunities</span><span class="funnel-stat-value">' + dop.totalOpps + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">No Account Linked</span><span class="funnel-stat-value" style="color:#ef4444">' + dop.noAccountCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Account Has No Contacts</span><span class="funnel-stat-value" style="color:#f97316">' + dop.noContactsOnAccountCount + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Disconnected</span><span class="funnel-stat-value" style="color:#ef4444">' + dop.totalIssues + ' (' + dop.issuePct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Fully Connected</span><span class="funnel-stat-value" style="color:#22c55e">' + (dop.totalOpps - dop.totalIssues) + '</span></div>';
+
+      } else if (key === 'accountsMissingContacts') {
+        const amc = d.accountsMissingContacts;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Accounts that have active Opportunities but no Contacts. You\'re selling to a company but haven\'t recorded who you\'re actually talking to — a major gap for relationship intelligence and AI scoring.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Accounts</span><span class="funnel-stat-value">' + amc.totalAccounts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Accounts with Opps</span><span class="funnel-stat-value">' + amc.accountsWithOpps + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Have Opps but No Contacts</span><span class="funnel-stat-value" style="color:#ef4444">' + amc.missingCount + ' (' + amc.missingPct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Have Both Opps + Contacts</span><span class="funnel-stat-value" style="color:#22c55e">' + (amc.accountsWithOpps - amc.missingCount) + '</span></div>';
+
+      } else if (key === 'accountsMissingOpps') {
+        const amo = d.accountsMissingOpps;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Accounts that have Contacts but zero Opportunities. These are stalled relationships — you know the people but haven\'t created any deals. Could indicate missed pipeline or contacts that were never followed up on.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Accounts</span><span class="funnel-stat-value">' + amo.totalAccounts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Accounts with Contacts</span><span class="funnel-stat-value">' + amo.accountsWithContacts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Have Contacts but No Opps</span><span class="funnel-stat-value" style="color:#f97316">' + amo.missingCount + ' (' + amo.missingPct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Have Both Contacts + Opps</span><span class="funnel-stat-value" style="color:#22c55e">' + (amo.accountsWithContacts - amo.missingCount) + '</span></div>';
+
+      } else if (key === 'contactOppGaps') {
+        const cog = d.contactOppGaps;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">Checks whether Contacts at Accounts with Opportunities have been assigned a Contact Role on those deals. Without Contact Roles, AI tools can\'t identify decision-makers, influencers, or champions in your deals.</p>';
+        if (cog.noRolesAtAll) {
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Contact Roles in Use?</span><span class="funnel-stat-value" style="color:#ef4444">No</span></div>';
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Contacts on Opp Accounts</span><span class="funnel-stat-value">' + cog.contactsOnOppAccounts + '</span></div>';
+          html += '<p style="color:#f97316;margin:1rem 0;font-size:0.85rem;">' + cog.message + '</p>';
+        } else {
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Contact Roles</span><span class="funnel-stat-value">' + cog.totalRoles + '</span></div>';
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Contacts on Opp Accounts</span><span class="funnel-stat-value">' + cog.contactsOnOppAccounts + '</span></div>';
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Without Roles Assigned</span><span class="funnel-stat-value" style="color:#f97316">' + cog.contactsWithoutRoles + ' (' + cog.gapPct + '%)</span></div>';
+          html += '<div class="funnel-stat-row"><span class="funnel-stat-label">With Roles Assigned</span><span class="funnel-stat-value" style="color:#22c55e">' + (cog.contactsOnOppAccounts - cog.contactsWithoutRoles) + '</span></div>';
+        }
+
+      } else if (key === 'completeness') {
+        const comp = d.completeness;
+        html += '<p style="color:#94a3b8;font-size:0.82rem;margin:0 0 1rem;line-height:1.5;">The big picture: what percentage of your Accounts have the full Account &rarr; Contact &rarr; Opportunity chain. Complete chains are the foundation for accurate forecasting, AI predictions, and reliable reporting.</p>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Total Accounts</span><span class="funnel-stat-value">' + comp.totalAccounts + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Complete (Contacts + Opps)</span><span class="funnel-stat-value" style="color:#22c55e">' + comp.complete + ' (' + comp.completePct + '%)</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Contacts Only (no Opps)</span><span class="funnel-stat-value" style="color:#f97316">' + comp.contactsOnly + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Opps Only (no Contacts)</span><span class="funnel-stat-value" style="color:#ef4444">' + comp.oppsOnly + '</span></div>';
+        html += '<div class="funnel-stat-row"><span class="funnel-stat-label">Empty (neither)</span><span class="funnel-stat-value" style="color:#ef4444">' + comp.empty + '</span></div>';
+
+        // Visual bar
+        if (comp.totalAccounts > 0) {
+          const cPct = Math.round((comp.complete / comp.totalAccounts) * 100);
+          const coPct = Math.round((comp.contactsOnly / comp.totalAccounts) * 100);
+          const ooPct = Math.round((comp.oppsOnly / comp.totalAccounts) * 100);
+          const ePct = Math.round((comp.empty / comp.totalAccounts) * 100);
+          html += '<div style="display:flex;height:24px;border-radius:6px;overflow:hidden;margin:1rem 0;">';
+          if (cPct > 0) html += '<div style="width:' + cPct + '%;background:#22c55e;" title="Complete: ' + cPct + '%"></div>';
+          if (coPct > 0) html += '<div style="width:' + coPct + '%;background:#f97316;" title="Contacts Only: ' + coPct + '%"></div>';
+          if (ooPct > 0) html += '<div style="width:' + ooPct + '%;background:#ef4444;" title="Opps Only: ' + ooPct + '%"></div>';
+          if (ePct > 0) html += '<div style="width:' + ePct + '%;background:#64748b;" title="Empty: ' + ePct + '%"></div>';
+          html += '</div>';
+          html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.75rem;color:#94a3b8;">';
+          html += '<span style="color:#22c55e;">&#9632; Complete</span>';
+          html += '<span style="color:#f97316;">&#9632; Contacts Only</span>';
+          html += '<span style="color:#ef4444;">&#9632; Opps Only</span>';
+          html += '<span style="color:#64748b;">&#9632; Empty</span>';
+          html += '</div>';
+        }
+      }
+
+      return html || '<p style="color:#94a3b8;">No data available.</p>';
+    }
 
     async function checkStatus() {
       const res = await fetch('/api/status');
@@ -459,6 +1185,7 @@
         const res = await fetch('/api/scan');
         if (!res.ok) throw new Error('Scan failed');
         scanData = await res.json();
+        document.getElementById('feature-tabs').classList.add('visible');
         renderResults();
         renderAnalytics();
       } catch (err) {

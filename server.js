@@ -5,6 +5,9 @@ const jsforce = require('jsforce');
 const path = require('path');
 
 const { runFullScan } = require('./scanner');
+const { runFunnelScan } = require('./funnel-scanner');
+const { runPipelineScan } = require('./pipeline-scanner');
+const { runRelationshipScan } = require('./relationship-scanner');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -128,6 +131,39 @@ app.get('/api/scan', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Scan error:', err);
     res.status(500).json({ error: 'Scan failed: ' + err.message });
+  }
+});
+
+// Funnel Health scan endpoint (Feature 2)
+app.get('/api/funnel-scan', requireAuth, async (req, res) => {
+  try {
+    const results = await runFunnelScan(req.sfConn);
+    res.json(results);
+  } catch (err) {
+    console.error('Funnel scan error:', err);
+    res.status(500).json({ error: 'Funnel scan failed: ' + err.message });
+  }
+});
+
+// Pipeline Integrity scan endpoint (Feature 3)
+app.get('/api/pipeline-scan', requireAuth, async (req, res) => {
+  try {
+    const results = await runPipelineScan(req.sfConn);
+    res.json(results);
+  } catch (err) {
+    console.error('Pipeline scan error:', err);
+    res.status(500).json({ error: 'Pipeline scan failed: ' + err.message });
+  }
+});
+
+// Relationship Audit scan endpoint (Feature 4)
+app.get('/api/relationship-scan', requireAuth, async (req, res) => {
+  try {
+    const results = await runRelationshipScan(req.sfConn);
+    res.json(results);
+  } catch (err) {
+    console.error('Relationship scan error:', err);
+    res.status(500).json({ error: 'Relationship scan failed: ' + err.message });
   }
 });
 
